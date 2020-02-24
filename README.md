@@ -41,5 +41,4 @@ Well done, with this done it'll be revised and **merged** to the project.
 
 **Thank You**.
 
-Melqui Eugenio
-melqui.eug@gmail.com
+Melqui
