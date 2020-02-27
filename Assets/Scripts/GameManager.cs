@@ -59,7 +59,7 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        void HighlightField(GameObject hitField)
+        void MovePiece(RaycastHit fieldHittenInfo)
         {
             //If there's a piece selected
             if(piece != null)
