@@ -1,10 +1,7 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-
+﻿
 public class Flag : Pieces
 {
-    public float yRotationSpeed = 10f;
+    public float yRotationSpeed = -2f;
 
     void Update()
     {
