@@ -3,12 +3,13 @@
 public class GameManager : MonoBehaviour
 {
     private static GameObject field, piece;
-    private Color stdFieldColor;
+    private Color fieldColor;
+    private bool isGreenTurn = true;
 
-    void Start()
+    private void Start()
     {
         field = GameObject.Find("a1");
-        stdFieldColor = field.GetComponent<MeshRenderer>().material.color;
+        fieldColor = field.GetComponent<MeshRenderer>().material.color;
     }
 
     //loops every frame
@@ -20,65 +21,80 @@ public class GameManager : MonoBehaviour
     private void MouseOver()
     {
         //Repaint last saved field
-        field.GetComponent<MeshRenderer>().material.color = stdFieldColor;
+        field.GetComponent<MeshRenderer>().material.color = fieldColor;
 
-        //Make a ray from main camera to the board
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-
-        //If the ray is hitting a field on the board
-        if (Physics.Raycast(ray, out RaycastHit hitInfo, 25.0f, LayerMask.GetMask("Board")))
+        //If ray at the mouse position is hitting a field on the board
+        if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit hitInfo, 25.0f, LayerMask.GetMask("Board")))
         {
-            HighlightField(hitInfo.transform.gameObject, Color.white);
-            SelectPiece(hitInfo);
+            HighlightField(hitInfo, Color.white);
+            SelectOnTurn(hitInfo, isGreenTurn);
             MovePiece(hitInfo);
         }
 
-        void HighlightField(GameObject hittenField, Color color)
+        void HighlightField(RaycastHit hittenFieldInfo, Color color)
         {
             //Save field
-            field = hittenField;
+            field = hittenFieldInfo.transform.gameObject;
             //Save field Color
-            stdFieldColor = field.GetComponent<MeshRenderer>().material.color;
+            fieldColor = field.GetComponent<MeshRenderer>().material.color;
             //Highlight (paint in the color)
             field.GetComponent<MeshRenderer>().material.color = color;
         }
 
-        void SelectPiece(RaycastHit fieldHittenInfo)
+        void SelectOnTurn(RaycastHit hittenFieldInfo, bool isGreenTurn)
         {
             //If hitten field has a Child (a Piece)
-            if (fieldHittenInfo.transform.childCount > 0)
+            if (hittenFieldInfo.transform.childCount > 0)
             {
-                //On left Click
-                if (Input.GetMouseButtonDown(0))
+                //If its green turn and piece is green
+                if (isGreenTurn && hittenFieldInfo.transform.GetChild(0).gameObject.tag == "Green")
                 {
-                    //Select Piece
-                    piece = fieldHittenInfo.transform.GetChild(0).gameObject;
+                    SelectPiece(hittenFieldInfo);
 
-                    Debug.Log("Selected: " + piece.name + " at: " + fieldHittenInfo.transform.name);
+                }//If its red turn and piece is red
+                else if (!isGreenTurn && hittenFieldInfo.transform.GetChild(0).gameObject.tag != "Green")
+                {
+                    SelectPiece(hittenFieldInfo);
                 }
             }
         }
 
-        void MovePiece(RaycastHit fieldHittenInfo)
+        void SelectPiece(RaycastHit hittenFieldInfo)
+        {
+            //On left Click
+            if (Input.GetMouseButtonDown(0))
+            {
+                //Select Piece
+                piece = hittenFieldInfo.transform.GetChild(0).gameObject;
+
+                Debug.Log("Selected: " + piece.name + " at: " + hittenFieldInfo.transform.name);
+            }
+        }
+
+        void MovePiece(RaycastHit hittenFieldInfo)
         {
             //If there's a piece selected
             if(piece != null)
             {
                 //If hitten field has no piece
-                if (fieldHittenInfo.transform.childCount == 0)
+               if (hittenFieldInfo.transform.childCount == 0)
                 {
                     //On left click
                     if (Input.GetMouseButtonDown(0))
                     {
                         //Move to field
-                        piece.transform.position = fieldHittenInfo.transform.position;
+                        piece.transform.position = hittenFieldInfo.transform.position;
                         //Set piece to be child of the clicked field
-                        piece.transform.SetParent(fieldHittenInfo.transform);
+                        piece.transform.SetParent(hittenFieldInfo.transform);
 
-                        Debug.Log("Moved: " + piece.name + " to: " + fieldHittenInfo.transform.name);
+                        Debug.Log("Moved: " + piece.name + " to: " + hittenFieldInfo.transform.name);
 
                         //Unselect piece
                         piece = null;
+                        //Change turn
+                        isGreenTurn = isGreenTurn ? false : true;
+
+                        Debug.Log("Green Turn: "+ isGreenTurn);
                     }
                 }
             }
