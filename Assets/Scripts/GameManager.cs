@@ -81,7 +81,6 @@ public class GameManager : MonoBehaviour
                         piece = null;
                     }
                 }
-                
             }
         }
     }
