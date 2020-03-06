@@ -1,8 +1,13 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using UnityEngine;
 
 public abstract class Pieces : MonoBehaviour
 {
-    public int CurrentX { get; set; }
-    public int CurrentY { get; set; }
     public bool isGreen;
+
+    public virtual ArrayList PossibleMoves(string[,] board, string field)
+    {
+        //hopefully never called
+        return null;
+    }
 }

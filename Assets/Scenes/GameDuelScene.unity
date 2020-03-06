@@ -15102,7 +15102,7 @@ PrefabInstance:
     - target: {fileID: 8858170952969272810, guid: 56bf1c9b38e2b534fb4e275e4dc31158,
         type: 3}
       propertyPath: m_TagString
-      value: Green
+      value: Untagged
       objectReference: {fileID: 0}
     - target: {fileID: 8858170952969272811, guid: 56bf1c9b38e2b534fb4e275e4dc31158,
         type: 3}
@@ -20359,7 +20359,7 @@ Light:
   m_BounceIntensity: 1
   m_ColorTemperature: 6570
   m_UseColorTemperature: 0
-  m_BoundingSphereOverride: {x: 0.0000008142067, y: 6.323129e-19, z: 6337696, w: NaN}
+  m_BoundingSphereOverride: {x: 2.867e-42, y: 1.01e-43, z: 980710.94, w: 0}
   m_UseBoundingSphereOverride: 0
   m_ShadowRadius: 0
   m_ShadowAngle: 0
@@ -60825,7 +60825,7 @@ PrefabInstance:
     - target: {fileID: 418089512554471871, guid: 903de15316cfbef44a6cc4f9e0c015ae,
         type: 3}
       propertyPath: m_TagString
-      value: Green
+      value: Item
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 903de15316cfbef44a6cc4f9e0c015ae, type: 3}
@@ -66446,7 +66446,7 @@ PrefabInstance:
     - target: {fileID: 8858170952969272810, guid: 56bf1c9b38e2b534fb4e275e4dc31158,
         type: 3}
       propertyPath: m_TagString
-      value: Green
+      value: Untagged
       objectReference: {fileID: 0}
     - target: {fileID: 8858170952969272811, guid: 56bf1c9b38e2b534fb4e275e4dc31158,
         type: 3}
@@ -74360,7 +74360,7 @@ PrefabInstance:
     - target: {fileID: 8848704863085591958, guid: 936c278751aaf964496277f3624c0c47,
         type: 3}
       propertyPath: m_TagString
-      value: Green
+      value: Untagged
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 936c278751aaf964496277f3624c0c47, type: 3}

@@ -1,5 +1,4 @@
-﻿
-public class Flag : Pieces
+﻿public class Flag : Pieces
 {
     public float yRotationSpeed = -2f;
 
