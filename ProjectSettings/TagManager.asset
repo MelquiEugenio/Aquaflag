@@ -5,6 +5,8 @@ TagManager:
   serializedVersion: 2
   tags:
   - Item
+  - Captain
+  - Ship
   layers:
   - Default
   - TransparentFX

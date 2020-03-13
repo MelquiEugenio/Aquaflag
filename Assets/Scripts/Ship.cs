@@ -1,78 +1,162 @@
 ﻿using System.Collections;
+using UnityEngine;
 
 public class Ship : Pieces
 {
-    private ArrayList possibleMoves = new ArrayList();
-    private ArrayList impossibleMovesForShip = new ArrayList();
-    
     public override ArrayList PossibleMoves(string[,] board, string fieldName)
     {
-        //earth fields
-        impossibleMovesForShip.Add("f2");
-        impossibleMovesForShip.Add("d2");
-        impossibleMovesForShip.Add("f4");
-        impossibleMovesForShip.Add("h2");
-        impossibleMovesForShip.Add("c3");
-        impossibleMovesForShip.Add("e5");
-        impossibleMovesForShip.Add("f6");
-        impossibleMovesForShip.Add("g5");
-        impossibleMovesForShip.Add("i3");
-        impossibleMovesForShip.Add("b3");
-        impossibleMovesForShip.Add("f7");
-        impossibleMovesForShip.Add("j3");
-        impossibleMovesForShip.Add("c6");
-        impossibleMovesForShip.Add("e8");
-        impossibleMovesForShip.Add("f8");
-        impossibleMovesForShip.Add("g8");
-        impossibleMovesForShip.Add("i6");
-        impossibleMovesForShip.Add("d8");
-        impossibleMovesForShip.Add("f10");
-        impossibleMovesForShip.Add("h8");
-        impossibleMovesForShip.Add("f12");
-
-        FindNeighbors(board, fieldName);
-        
-        int firstNeighborsCount = possibleMoves.Count; //if we use 'possibleMoves.Count' to set the loop limit, it'll loop forever
-
-        for (int i = 0; i < firstNeighborsCount; i++)
+        ArrayList possibleMoves = new ArrayList();
+        ArrayList impossibleMovesForShip = new ArrayList
         {
-            FindNeighbors(board, possibleMoves[i].ToString());
+            "f2",
+            "d2",
+            "f4",
+            "h2",
+            "c3",
+            "e5",
+            "f6",
+            "g5",
+            "i3",
+            "b3",
+            "f7",
+            "j3",
+            "c6",
+            "e8",
+            "f8",
+            "g8",
+            "i6",
+            "d8",
+            "f10",
+            "h8",
+            "f12"
+        };
+
+        void FindNeighbors(string[,] theBoard, string theFieldName)
+        {
+            for (int i = 0; i < theBoard.GetLength(0); i++)
+            {
+                for (int j = 0; j < theBoard.GetLength(1); j++)
+                {
+                    if (theBoard[i, j] == theFieldName)
+                    {
+                        if (theBoard[i, j + 1] != null && !impossibleMovesForShip.Contains(theBoard[i, j + 1]) && !possibleMoves.Contains(theBoard[i, j + 1]))
+                            possibleMoves.Add(theBoard[i, j + 1]);
+
+                        if (theBoard[i + 1, j + 1] != null && !impossibleMovesForShip.Contains(theBoard[i + 1, j + 1]) && !possibleMoves.Contains(theBoard[i + 1, j + 1]))
+                            possibleMoves.Add(theBoard[i + 1, j + 1]);
+
+                        if (theBoard[i + 1, j] != null && !impossibleMovesForShip.Contains(theBoard[i + 1, j]) && !possibleMoves.Contains(theBoard[i + 1, j]))
+                            possibleMoves.Add(theBoard[i + 1, j]);
+
+                        if (theBoard[i, j - 1] != null && !impossibleMovesForShip.Contains(theBoard[i, j - 1]) && !possibleMoves.Contains(theBoard[i, j - 1]))
+                            possibleMoves.Add(theBoard[i, j - 1]);
+
+                        if (theBoard[i - 1, j - 1] != null && !impossibleMovesForShip.Contains(theBoard[i - 1, j - 1]) && !possibleMoves.Contains(theBoard[i - 1, j - 1]))
+                            possibleMoves.Add(theBoard[i - 1, j - 1]);
+
+                        if (theBoard[i - 1, j] != null && !impossibleMovesForShip.Contains(theBoard[i - 1, j]) && !possibleMoves.Contains(theBoard[i - 1, j]))
+                            possibleMoves.Add(theBoard[i - 1, j]);
+
+                        return;
+                    }
+                }
+            }
         }
 
+        FindNeighbors(board, fieldName);
+
+        int possibleMovesCount = possibleMoves.Count; //if we use 'possibleMoves.Count' to set the loop limit, it'll loop forever cause its an ArrayList
+
+        // find and add the second possible fields for each last added moves (cause Ship can move 2 fields per turn)
+        for (int i = 0; i < possibleMovesCount; i++)
+        {
+            FindNeighbors(board, (string) possibleMoves[i]);
+        }
+
+        // remove the immediate selected field
         possibleMoves.Remove(fieldName);
 
         return possibleMoves;
     }
 
-    private void FindNeighbors(string[,] board, string fieldName)
+    public override bool OnCollision(RaycastHit hittenFieldInfo, GameObject piece)
     {
-        for (int i = 0; i<board.GetLength(0); i++)
+        // with an enemy piece, destroy it
+        if (hittenFieldInfo.transform.childCount > 0 &&
+            hittenFieldInfo.transform.GetChild(0).GetComponent<Pieces>().isGreen != piece.GetComponent<Pieces>().isGreen)
+            Destroy(hittenFieldInfo.transform.GetChild(0).gameObject);
+
+        // with a team ship, invalid move
+        if (hittenFieldInfo.transform.childCount > 0 && hittenFieldInfo.transform.GetChild(0).tag == "Ship" &&
+            hittenFieldInfo.transform.GetChild(0).GetComponent<Pieces>().isGreen == piece.GetComponent<Pieces>().isGreen)
         {
-            for (int j = 0; j<board.GetLength(1); j++)
+            Debug.Log("Invalid Move");
+            return false;
+        }
+
+        // with a team captain
+        if (hittenFieldInfo.transform.childCount > 0 && hittenFieldInfo.transform.GetChild(0).tag == "Captain" &&
+            hittenFieldInfo.transform.GetChild(0).GetComponent<Pieces>().isGreen == piece.GetComponent<Pieces>().isGreen)
+        {
+            // while carrying enemy captain, kick enemy
+            if (piece.transform.childCount > 0 && piece.transform.GetChild(0).tag == "Captain")
             {
-                if (board[i, j] == fieldName)
+                piece.transform.GetChild(0).SetParent(piece.transform.parent);
+            }
+
+            // while carrying a flag
+            if (piece.transform.childCount > 0 && piece.transform.GetChild(0).tag == "Item")
+            {
+                // set flag to be child of captain
+                piece.transform.GetChild(0).SetParent(hittenFieldInfo.transform.GetChild(0));
+
+                // center position of childs on captain
+                for (int i = 0; i < hittenFieldInfo.transform.GetChild(0).childCount; i++)
                 {
-                    if (board[i, j + 1] != null && !impossibleMovesForShip.Contains(board[i, j + 1]) && !possibleMoves.Contains(board[i, j + 1]))
-                        possibleMoves.Add(board[i, j + 1]);
-
-                    if (board[i + 1, j + 1] != null && !impossibleMovesForShip.Contains(board[i + 1, j + 1]) && !possibleMoves.Contains(board[i + 1, j + 1]))
-                        possibleMoves.Add(board[i + 1, j + 1]);
-
-                    if (board[i + 1, j] != null && !impossibleMovesForShip.Contains(board[i + 1, j]) && !possibleMoves.Contains(board[i + 1, j]))
-                        possibleMoves.Add(board[i + 1, j]);
-
-                    if (board[i, j - 1] != null && !impossibleMovesForShip.Contains(board[i, j - 1]) && !possibleMoves.Contains(board[i, j - 1]))
-                        possibleMoves.Add(board[i, j - 1]);
-
-                    if (board[i - 1, j - 1] != null && !impossibleMovesForShip.Contains(board[i - 1, j - 1]) && !possibleMoves.Contains(board[i - 1, j - 1]))
-                        possibleMoves.Add(board[i - 1, j - 1]);
-
-                    if (board[i - 1, j] != null && !impossibleMovesForShip.Contains(board[i - 1, j]) && !possibleMoves.Contains(board[i - 1, j]))
-                        possibleMoves.Add(board[i - 1, j]);
-
-                    return;
+                    hittenFieldInfo.transform.GetChild(0).GetChild(i).position = hittenFieldInfo.transform.GetChild(0).position;
                 }
             }
+
+            // rescue it from drowning (set as child of the Ship)
+            hittenFieldInfo.transform.GetChild(0).SetParent(piece.transform);
+            // center position
+            piece.transform.GetChild(0).position = piece.transform.position;
         }
+
+        // with a team flag
+        if (hittenFieldInfo.transform.childCount > 0 && hittenFieldInfo.transform.GetChild(0).tag == "Item" &&
+            hittenFieldInfo.transform.GetChild(0).GetComponent<Pieces>().isGreen == piece.GetComponent<Pieces>().isGreen)
+        {
+            // while carrying a captain
+            if (piece.transform.childCount > 0 && piece.transform.GetChild(0).tag == "Captain")
+            {
+                // set flag as child of captain
+                hittenFieldInfo.transform.GetChild(0).SetParent(piece.transform.GetChild(0));
+
+                // center position of childs on captain
+                for (int i = 0; i < piece.transform.GetChild(0).childCount; i++)
+                {
+                    piece.transform.GetChild(0).GetChild(i).position = piece.transform.GetChild(0).position;
+                }
+            }
+            else
+            {
+                // set flag to be child of the ship
+                hittenFieldInfo.transform.GetChild(0).SetParent(piece.transform);
+                // center position
+                piece.transform.GetChild(0).position = piece.transform.position;
+            }
+        }
+
+        //---------------
+
+        // Move to field
+        piece.transform.position = hittenFieldInfo.transform.position;
+        // Set piece to be child of the clicked field
+        piece.transform.SetParent(hittenFieldInfo.transform);
+
+        Debug.Log("Moved: " + piece.name + " to: " + hittenFieldInfo.transform.name);
+
+        return true;
     }
 }

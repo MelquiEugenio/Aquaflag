@@ -10,4 +10,9 @@ public abstract class Pieces : MonoBehaviour
         //hopefully never called
         return null;
     }
+
+    public virtual bool OnCollision(RaycastHit hittenFieldInfo, GameObject piece)
+    {
+        return false;
+    }
 }
