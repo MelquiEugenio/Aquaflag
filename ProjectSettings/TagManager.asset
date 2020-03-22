@@ -7,6 +7,7 @@ TagManager:
   - Item
   - Captain
   - Ship
+  - Destroyed
   layers:
   - Default
   - TransparentFX

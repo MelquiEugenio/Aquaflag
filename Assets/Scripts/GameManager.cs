@@ -6,7 +6,11 @@ public class GameManager : MonoBehaviour
     private static GameObject piece, lastPiece;
     private ArrayList possibleMoves = new ArrayList();
     private ArrayList stdFieldColors = new ArrayList();
+    private ArrayList lastMoves = new ArrayList();
     private bool isGreenTurn = true;
+    private int greenCountdown = 15;
+    private int redCountdown = 15;
+    private bool endGame = false;
     private readonly string[,] board = {{ null,null, null, null, null, null, null, null, null, null, null, null, null }, // added an extra line each side
                                        { null, null, null, null, null, "g1", "f1", null, null, null, null, null, null },
                                        { null, null, null, "i1", "h1", "g2", "f2", "e1", null, null, null, null, null },
@@ -25,7 +29,8 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
-        MouseOver();
+        if(!endGame)
+            MouseOver();
     }
 
     private void MouseOver()
@@ -39,33 +44,35 @@ public class GameManager : MonoBehaviour
 
         void SelectOnTurn(RaycastHit hittenFieldInfo, bool isGreenTurn)
         {
-            // If hitten field has a Piece (a child) and its not an Item
+            // If field has not an Item
             if (hittenFieldInfo.transform.childCount > 0 && hittenFieldInfo.transform.GetChild(0).tag != "Item")
             {
-                // If its green turn and piece is green
-                if (isGreenTurn && hittenFieldInfo.transform.GetChild(0).gameObject.GetComponent<Pieces>().isGreen)
-                {
-                    SelectPiece(hittenFieldInfo);
-
-                } // If its red turn and piece is red
-                else if (!isGreenTurn && !hittenFieldInfo.transform.GetChild(0).gameObject.GetComponent<Pieces>().isGreen)
-                {
-                    SelectPiece(hittenFieldInfo);
-                }
+                if (isGreenTurn && hittenFieldInfo.transform.GetChild(0).GetComponent<Pieces>().isGreen) // If it's green turn and the piece is green
+                    SelectPiece(hittenFieldInfo, false);
+                else if (isGreenTurn && hittenFieldInfo.transform.GetChild(0).childCount > 0 &&
+                    hittenFieldInfo.transform.GetChild(0).GetChild(0).GetComponent<Pieces>().isGreen &&
+                    hittenFieldInfo.transform.GetChild(0).GetChild(0).tag != "Item") // If it's green turn and the sub-piece is green (GreenCaptain on RedShip), and it's not an Item
+                    SelectPiece(hittenFieldInfo, true);
+                else if (!isGreenTurn && !hittenFieldInfo.transform.GetChild(0).GetComponent<Pieces>().isGreen) // If it's red turn and the piece is red
+                    SelectPiece(hittenFieldInfo, false);
+                else if (!isGreenTurn && hittenFieldInfo.transform.GetChild(0).childCount > 0 &&
+                    !hittenFieldInfo.transform.GetChild(0).GetChild(0).GetComponent<Pieces>().isGreen &&
+                    hittenFieldInfo.transform.GetChild(0).GetChild(0).tag != "Item") // If it's red turn and the sub-piece is red (RedCaptain on GreenShip), and it's not an Item
+                    SelectPiece(hittenFieldInfo, true);
             }
         }
 
-        void SelectPiece(RaycastHit hittenFieldInfo)
+        void SelectPiece(RaycastHit hittenFieldInfo, bool isSubChild)
         {
             // On left Click
             if (Input.GetMouseButtonDown(0))
             {
-                // If it's a possible move do not over select
+                // Do not select again if over a possible move (let same color pieces collide)
                 if (possibleMoves.Contains(hittenFieldInfo.transform.name))
                     return;
 
                 // Select Piece
-                piece = hittenFieldInfo.transform.GetChild(0).gameObject;
+                piece = isSubChild ? hittenFieldInfo.transform.GetChild(0).GetChild(0).gameObject : hittenFieldInfo.transform.GetChild(0).gameObject;
 
                 if (DeselectPieceIfClickedAgain())
                     return;
@@ -97,35 +104,37 @@ public class GameManager : MonoBehaviour
         {
             // Repaint last fields
             for (int i = 0; i < possibleMoves.Count; i++)
-                GameObject.Find((string) possibleMoves[i]).GetComponent<MeshRenderer>().material.color = (Color) stdFieldColors[i];
+                GameObject.Find((string)possibleMoves[i]).GetComponent<MeshRenderer>().material.color = (Color)stdFieldColors[i];
 
             // Clear arrays
             possibleMoves.Clear();
             stdFieldColors.Clear();
 
             // Set possible moves
-            possibleMoves = piece.GetComponent<Pieces>().PossibleMoves(board, hittenFieldInfo.transform.name);
+            possibleMoves = piece.GetComponent<Pieces>().PossibleMoves(board, hittenFieldInfo.transform.name, piece);
 
             for (int i = 0; i < possibleMoves.Count; i++)
             {
                 // Save standart color of each field
-                stdFieldColors.Add(GameObject.Find((string) possibleMoves[i]).GetComponent<MeshRenderer>().material.color);
+                stdFieldColors.Add(GameObject.Find((string)possibleMoves[i]).GetComponent<MeshRenderer>().material.color);
                 // Highlight
-                GameObject.Find((string) possibleMoves[i]).GetComponent<MeshRenderer>().material.color = color;
+                GameObject.Find((string)possibleMoves[i]).GetComponent<MeshRenderer>().material.color = color;
             }
         }
 
         void MovePiece(RaycastHit hittenFieldInfo)
         {
-            // If possible move
+            // If field is a possible move
             if (possibleMoves.Contains(hittenFieldInfo.transform.name))
             {
                 // On left click
                 if (Input.GetMouseButtonDown(0))
                 {
-                    // Check collisions event
+                    // Check collision events
                     if (piece.GetComponent<Pieces>().OnCollision(hittenFieldInfo, piece))
                     {
+                        GameRules();
+
                         // Change turn
                         isGreenTurn = isGreenTurn ? false : true;
                         //Debug.Log("Green Turn: " + isGreenTurn);
@@ -137,27 +146,98 @@ public class GameManager : MonoBehaviour
                         UndoAll();
                     }
                 }
-            } 
-            else if (piece != null) // piece selected and not a possible move
+            }
+            else if (piece != null) // not a possible move, while piece selected
             {
-                // if its not the immediate selected field/piece
-                if (hittenFieldInfo.transform.childCount > 0 && hittenFieldInfo.transform.GetChild(0).gameObject != piece) 
+                // excluding the immediate field where the selected piece is, any field is an invalid move
+                if (hittenFieldInfo.transform.name != piece.transform.parent.name &&
+                    hittenFieldInfo.transform.name != piece.transform.parent.parent.name)
                 {
-                    OnClickUndoAll();
+                    //On left click
+                    if (Input.GetMouseButtonDown(0))
+                    {
+                        UndoAll();
+                        Debug.Log("Invalid Move");
+                    }
                 }
-                else if (hittenFieldInfo.transform.childCount == 0) // no piece
+            }
+        }
+
+        void GameRules()
+        {
+            Draw();
+            Loss();
+            Win();
+
+            void Win()
+            {
+                // WIN Condition: To conquer the enemy capital with the flag or to destroy the enemy captain/flag
+                if (GameObject.Find("f12").transform.childCount > 0 &&
+                    GameObject.Find("f12").transform.GetChild(0).name == "GreenCaptain" &&
+                    GameObject.Find("f12").transform.GetChild(0).childCount > 0 &&
+                    GameObject.Find("f12").transform.GetChild(0).GetChild(0).name == "GreenFlag" ||
+                    GameObject.Find("RedCaptain").tag == "Destroyed" ||
+                    GameObject.Find("RedFlag").tag == "Destroyed")
                 {
-                    OnClickUndoAll();
+                    Debug.Log("GREEN PLAYER WON!");
+                    endGame = true;
+                }
+                else if (GameObject.Find("f2").transform.childCount > 0 &&
+                         GameObject.Find("f2").transform.GetChild(0).name == "RedCaptain" &&
+                         GameObject.Find("f2").transform.GetChild(0).childCount > 0 &&
+                         GameObject.Find("f2").transform.GetChild(0).GetChild(0).name == "RedFlag" ||
+                         GameObject.Find("GreenCaptain").tag == "Destroyed" ||
+                         GameObject.Find("GreenFlag").tag == "Destroyed")
+                {
+                    Debug.Log("RED PLAYER WON!");
+                    endGame = true;
                 }
             }
 
-            void OnClickUndoAll()
+            void Loss()
             {
-                //On left click
-                if (Input.GetMouseButtonDown(0))
+                // LOSS Condition: 15 (fifteen) turns without moving the captain
+                if (piece.transform.name == "GreenCaptain" ||
+                    piece.transform.childCount > 0 && piece.transform.GetChild(0).name == "GreenCaptain")
+                    greenCountdown = 15;
+                else if (piece.transform.tag == "RedCaptain" ||
+                    piece.transform.childCount > 0 && piece.transform.GetChild(0).name == "RedCaptain")
+                    redCountdown = 15;
+                else if (piece.transform.tag == "Ship" && piece.transform.GetComponent<Pieces>().isGreen)
+                    greenCountdown--;
+                else if (piece.transform.tag == "Ship" && !piece.transform.GetComponent<Pieces>().isGreen)
+                    redCountdown--;
+
+                if (redCountdown == 0)
                 {
-                    UndoAll();
-                    Debug.Log("Invalid Move");
+                    Debug.Log("GREEN PLAYER WON!");
+                    endGame = true;
+                }
+                else if (greenCountdown == 0)
+                {
+                    Debug.Log("RED PLAYER WON!");
+                    endGame = true;
+                }
+            }
+
+            void Draw()
+            {
+                //DRAW Condition: 3 (three) turns with sequentially repeated moves by both players
+                // 1, 2, 3, 4, 1, 2, 3, 4, 1, 2
+
+                lastMoves.Add(piece.name + " to: " + piece.transform.parent.name);
+
+                if (lastMoves.Count == 10)
+                {
+                    if (lastMoves[0].ToString() == lastMoves[4].ToString() && lastMoves[4].ToString() == lastMoves[8].ToString() &&
+                       lastMoves[1].ToString() == lastMoves[5].ToString() && lastMoves[5].ToString() == lastMoves[9].ToString() &&
+                       lastMoves[2].ToString() == lastMoves[6].ToString() && lastMoves[3].ToString() == lastMoves[7].ToString())
+                    {
+                        Debug.Log("DRAW!");
+                        endGame = true;
+                    }
+                    else
+                        lastMoves.RemoveAt(0);
                 }
             }
         }
