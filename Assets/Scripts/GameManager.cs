@@ -1,12 +1,15 @@
 ﻿using System.Collections;
 using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
-    private static GameObject piece, lastPiece;
+    private static GameObject piece, lastPiece, lastField;
     private ArrayList possibleMoves = new ArrayList();
     private ArrayList stdFieldColors = new ArrayList();
     private ArrayList lastMoves = new ArrayList();
+    private ArrayList movesLog = new ArrayList();
     private bool isGreenTurn = true;
     private int greenCountdown = 15;
     private int redCountdown = 15;
@@ -29,11 +32,24 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
-        if(!endGame)
-            MouseOver();
+        if (!endGame)
+            MouseOverBoard();
+        else
+            GameObject.Find("UndoButton").GetComponent<Button>().interactable = false;
+
+        // Handling back pressed on Android
+        if (Application.platform == RuntimePlatform.Android)
+        {
+            // Check if Back was pressed this frame
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                Debug.Log("Returning");
+                SceneManager.LoadScene(0);
+            }
+        }
     }
 
-    private void MouseOver()
+    void MouseOverBoard()
     {
         //If ray casted from screen to the direction of mouse position (or touch) is hitting a field on the board
         if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit hitInfo, 25.0f, LayerMask.GetMask("Board")))
@@ -62,22 +78,25 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        void SelectPiece(RaycastHit hittenFieldInfo, bool isSubChild)
+        void SelectPiece(RaycastHit hittenFieldInfo, bool isGrandChild)
         {
             // On left Click
             if (Input.GetMouseButtonDown(0))
             {
-                // Do not select again if over a possible move (let same color pieces collide)
+                // Do not select again if over a possible move (let same color pieces to collide)
                 if (possibleMoves.Contains(hittenFieldInfo.transform.name))
                     return;
 
                 // Select Piece
-                piece = isSubChild ? hittenFieldInfo.transform.GetChild(0).GetChild(0).gameObject : hittenFieldInfo.transform.GetChild(0).gameObject;
+                piece = isGrandChild ? hittenFieldInfo.transform.GetChild(0).GetChild(0).gameObject : hittenFieldInfo.transform.GetChild(0).gameObject;
 
                 if (DeselectPieceIfClickedAgain())
                     return;
 
                 Debug.Log("Selected: " + piece.name + " at: " + hittenFieldInfo.transform.name);
+
+                // Save last field
+                lastField = hittenFieldInfo.transform.gameObject;
 
                 SetAndHighlightPossibleMoves(piece, hittenFieldInfo, Color.magenta);
             }
@@ -135,6 +154,8 @@ public class GameManager : MonoBehaviour
                     {
                         GameRules();
 
+                        LogMoves();
+
                         // Change turn
                         isGreenTurn = isGreenTurn ? false : true;
                         //Debug.Log("Green Turn: " + isGreenTurn);
@@ -142,9 +163,7 @@ public class GameManager : MonoBehaviour
                         UndoAll();
                     }
                     else
-                    {
                         UndoAll();
-                    }
                 }
             }
             else if (piece != null) // not a possible move, while piece selected
@@ -160,6 +179,31 @@ public class GameManager : MonoBehaviour
                         Debug.Log("Invalid Move");
                     }
                 }
+            }
+
+            void LogMoves()
+            {
+                // if the piece moved is a ship and the ship didn't move
+                if (piece.tag == "Ship" && hittenFieldInfo.transform.GetChild(0).tag != "Ship")
+                {
+                    // add the piece which has moved (the captain)
+                    movesLog.Insert(0, hittenFieldInfo.transform.GetChild(0).gameObject);
+                    // add the last field (where the piece came from)
+                    movesLog.Insert(1, lastField);
+
+                    Debug.Log("Called");
+                }
+                else
+                {
+                    movesLog.Insert(0, lastPiece);
+                    movesLog.Insert(1, lastField);
+                }
+
+                foreach (GameObject i in movesLog)
+                    Debug.Log(i.name);
+
+                // let return button interactivity
+                GameObject.Find("UndoButton").GetComponent<Button>().interactable = true;
             }
         }
 
@@ -223,15 +267,16 @@ public class GameManager : MonoBehaviour
             void Draw()
             {
                 //DRAW Condition: 3 (three) turns with sequentially repeated moves by both players
-                // 1, 2, 3, 4, 1, 2, 3, 4, 1, 2
+
+                // 0 1  2 3  4 5  6 7  8 9
+                // 1-2, x-x, 1-2, x-x, 1-2
 
                 lastMoves.Add(piece.name + " to: " + piece.transform.parent.name);
 
                 if (lastMoves.Count == 10)
                 {
                     if (lastMoves[0].ToString() == lastMoves[4].ToString() && lastMoves[4].ToString() == lastMoves[8].ToString() &&
-                       lastMoves[1].ToString() == lastMoves[5].ToString() && lastMoves[5].ToString() == lastMoves[9].ToString() &&
-                       lastMoves[2].ToString() == lastMoves[6].ToString() && lastMoves[3].ToString() == lastMoves[7].ToString())
+                       lastMoves[1].ToString() == lastMoves[5].ToString() && lastMoves[5].ToString() == lastMoves[9].ToString())
                     {
                         Debug.Log("DRAW!");
                         endGame = true;
@@ -241,20 +286,78 @@ public class GameManager : MonoBehaviour
                 }
             }
         }
+    }
 
-        void UndoAll()
+    void UndoAll()
+    {
+        // Repaint last fields
+        for (int i = 0; i < possibleMoves.Count; i++)
+            GameObject.Find(possibleMoves[i].ToString()).GetComponent<MeshRenderer>().material.color = (Color)stdFieldColors[i];
+
+        // Unselect Piece
+        piece = null;
+        lastPiece = null;
+
+        // Clear arrays
+        possibleMoves.Clear();
+        stdFieldColors.Clear();
+    }
+
+
+    // Game Scene UI
+
+    public void UndoLastMove()
+    {
+        GameObject piece, field;
+        piece = (GameObject) movesLog[0];
+        field = (GameObject) movesLog[1];
+
+        // return move
+        if (field.transform.childCount > 0 && field.transform.GetChild(0).tag == "Ship")
         {
-            // Repaint last fields
-            for (int i = 0; i < possibleMoves.Count; i++)
-                GameObject.Find(possibleMoves[i].ToString()).GetComponent<MeshRenderer>().material.color = (Color)stdFieldColors[i];
-
-            // Unselect Piece
-            piece = null;
-            lastPiece = null;
-
-            // Clear arrays
-            possibleMoves.Clear();
-            stdFieldColors.Clear();
+            piece.transform.position = field.transform.GetChild(0).position;
+            piece.transform.SetParent(field.transform.GetChild(0));
+            movesLog.RemoveAt(0);
+            movesLog.RemoveAt(0);
         }
+        else if (field.transform.childCount > 0 && field.transform.GetChild(0).tag == "Captain")
+        {
+            //more to do
+            // parent captain
+            field.transform.GetChild(0).SetParent(piece.transform);
+            // Move to field
+            piece.transform.position = field.transform.position;
+            // Set piece to be child of the clicked field
+            piece.transform.SetParent(field.transform);
+        }
+
+
+        piece.transform.position = field.transform.position;
+        // re-parent
+        piece.transform.SetParent(field.transform);
+        // remove moves returned
+        movesLog.RemoveAt(0);
+        movesLog.RemoveAt(0);
+
+        // return turn
+        isGreenTurn = piece.transform.GetComponent<Pieces>().isGreen ? true : false;
+
+        if (movesLog.Count == 0)
+            GameObject.Find("UndoButton").GetComponent<Button>().interactable = false;
+
+        UndoAll();
+    }
+
+    public void RestartGameScene()
+    {
+        Debug.Log("Restarting");
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+
+    public void BackToMainMenu()
+    {
+        Debug.Log("Returning");
+        SceneManager.LoadScene(0);
     }
 }
+
